@@ -1,0 +1,169 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+	<meta charset="UTF-8" />
+    <title>Crappy Bird</title>
+	<script type="text/javascript" src="js/phaser.min.js"></script>
+    <style type="text/css">
+        canvas {
+            margin: 50px auto;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+var game = new Phaser.Game(800, 600, Phaser.AUTO, 'crappy-bird', { preload: preload, create: create, update: update });
+
+function preload() {
+    game.load.spritesheet('bird', 'assets/bird.png', 44, 34);
+
+    game.load.image('bg', 'assets/bg.png');
+    game.load.image('tube', 'assets/tube.png');
+    game.load.image('poop', 'assets/poop.png');
+
+    game.load.bitmapFont('font', 'assets/font-white.png', 'assets/font.xml');
+}
+
+var bird;
+var tube1;
+var tube2;
+var pooper;
+
+var flapReleased = false;
+
+var end = false;
+var score = 0;
+var scoreText;
+var welcomeText;
+
+function create() {
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+
+    game.add.sprite(0, 0, 'bg');
+
+    welcomeText = game.add.bitmapText(200, -100, 'font', 'Crappy Bird', 72);
+    game.add.tween(welcomeText).to({y: 200}, 2400, Phaser.Easing.Bounce.Out, true, 50, false);
+    game.time.events.add(Phaser.Timer.SECOND * 2, fadeOutWelcomeText, this);
+
+    createTubes();
+
+    bird = game.add.sprite(150, game.world.height / 2, 'bird');
+    game.physics.arcade.enable(bird);
+
+    bird.body.bounce.y = 0.2;
+    bird.body.gravity.y = 300;
+
+    bird.checkWorldBounds = true;
+    bird.events.onOutOfBounds.add(birdDown, this);
+
+    bird.animations.add('up', [1], 1, false);
+    bird.animations.add('down', [0], 1, false);
+
+    pooper = game.add.emitter(0, 0, 10);
+    pooper.makeParticles('poop');
+    pooper.gravity = 350;
+    pooper.angle = .4;
+    
+    cursors = game.input.keyboard.createCursorKeys();
+
+    scoreText = game.add.bitmapText(5, 565, 'font','score = ', 32);
+}
+
+function update() {
+    if (!end)
+    {
+        score++;
+        scoreText.setText('score = ' + score);
+    }
+
+    if (score % 500 == 0)
+    {
+        tube1.body.velocity.x -= 50;
+        tube2.body.velocity.x -= 50;
+    }
+
+    game.physics.arcade.collide(bird, tube1);
+    game.physics.arcade.collide(bird, tube2);
+
+    if (game.input.keyboard.justReleased(Phaser.Keyboard.UP))
+    {
+        flapReleased = true;
+    }
+
+    if (cursors.up.isDown && flapReleased)
+    {
+        bird.body.velocity.y = -150;
+
+        var numPoops = game.rnd.realInRange(0, 10);
+
+        pooper.x = bird.x;
+        pooper.y = bird.y + 25;
+        pooper.start(true, 2000, null, numPoops);
+
+        bird.body.velocity.y -= numPoops * 10;
+
+        flapReleased = false;
+    }
+
+    if (bird.body.velocity.y > 0)
+    {
+        bird.animations.play('down');
+        bird.angle = 5;
+    }
+    else
+    {
+        bird.animations.play('up');
+        bird.angle = -5;
+    }
+
+    if (tube1.body.x < -150)
+    {
+        tube1.body.x = game.world.width;
+        tube2.body.x = game.world.width;
+
+        tube1.height = getTubeHeight();
+        tube2.height = getTubeHeight();
+
+        tube2.body.y = game.world.height - tube2.height;
+    }
+}
+
+function birdDown() {
+    end = true;
+
+    game.add.bitmapText(330, 300, 'font', 'Aw, crap!', 32);
+
+    tube1.body.velocity.x = 0;
+    tube2.body.velocity.x = 0;
+}
+
+function createTubes() {
+    var tube1Height = getTubeHeight();
+    tube1 = game.add.tileSprite(game.world.width, 0, 150, tube1Height, 'tube');
+    game.physics.arcade.enable(tube1);
+    tube1.body.velocity.x = -150;
+    tube1.body.immovable = true;
+
+    var tube2Height = getTubeHeight();
+    tube2 = game.add.tileSprite(game.world.width, game.world.height - tube2Height, 150, tube2Height, 'tube');
+    game.physics.arcade.enable(tube2);
+    tube2.body.velocity.x = -150;
+    tube2.body.immovable = true;
+}
+
+function getTubeHeight() {
+    var minGap = 100;
+    var baseTubeHeight = (game.world.height - minGap) / 2;
+    return game.math.floor(baseTubeHeight * game.rnd.frac());
+}
+
+function fadeOutWelcomeText() {
+    game.add.tween(welcomeText).to({alpha: 0}, 2000, Phaser.Easing.Linear.None, true);
+}
+
+</script>
+
+</body>
+</html>
